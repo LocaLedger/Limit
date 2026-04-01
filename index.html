@@ -3,81 +3,787 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>LocaLimit — Budget Intelligence</title>
+<title>LocaLimit</title>
+<link rel="manifest" href="./manifest.json" />
+
+<script>
+  window.tailwind = {
+    config: {
+      theme: { extend: { fontSize: { 'xxs': ['0.625rem',{lineHeight:'0.875rem'}], 'xxxs': ['0.5rem',{lineHeight:'0.75rem'}] } } }
+    }
+  }
+</script>
 <script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
-  * { font-family: 'Space Mono', 'Courier New', monospace; }
-  :root { --brand: #F59E0B; --brand-dim: rgba(245,158,11,0.15); --brand-border: rgba(245,158,11,0.3); --brand-text: #FCD34D; }
-  body { background: #0f172a; color: #f1f5f9; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-  .pulse { animation: pulse 2.6s ease-in-out infinite; }
-  .feature-item::before { content: "→"; color: var(--brand-text); margin-right: 10px; flex-shrink: 0; }
-  .feature-item { display: flex; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 13px; color: #cbd5e1; }
-  .feature-item:last-child { border-bottom: none; }
+/* ── Suite Drum ──────────────────────────────────────── */
+.suite-drum-wrap { height:44px;overflow:hidden;display:inline-block;vertical-align:middle;position:relative;
+  -webkit-mask-image:linear-gradient(to bottom,transparent 0%,#000 22%,#000 78%,transparent 100%);
+  mask-image:linear-gradient(to bottom,transparent 0%,#000 22%,#000 78%,transparent 100%); }
+.suite-drum { position:relative;transition:transform 0.52s cubic-bezier(0.4,0,0.2,1);will-change:transform; }
+.suite-face { display:block;height:44px;line-height:44px;white-space:nowrap;
+  font-family:'Space Mono','Courier New',monospace;font-size:28px;font-weight:700;color:#F59E0B; }
+#suiteLauncher { background:rgba(15,17,26,0.97);border-bottom:1px solid rgba(245,158,11,0.18);
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:0 8px 32px rgba(0,0,0,0.5); }
+.suite-module-btn { display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;
+  border:1px solid transparent;background:rgba(255,255,255,0.03);cursor:pointer;
+  transition:background 0.15s,border-color 0.15s,transform 0.1s;text-align:left;width:100%; }
+.suite-module-btn:active { transform:scale(0.97); }
+.suite-module-btn.active { background:rgba(245,158,11,0.14);border-color:rgba(245,158,11,0.38); }
+.suite-module-btn:not(.active):hover { background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.08); }
+.suite-module-icon { width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0; }
+/* ── Float labels ──────────────────────────────────── */
+.float-wrap { position:relative; }
+.float-input { width:100%;padding:20px 12px 8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);
+  border-radius:10px;color:#f1f5f9;font-family:'Space Mono',monospace;font-size:14px;transition:border-color 0.15s;
+  -webkit-appearance:none;appearance:none; }
+.float-input:focus { outline:none;border-color:#F59E0B; }
+.float-label { position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:14px;color:#64748b;
+  pointer-events:none;transition:all 0.15s ease;font-family:'Space Mono',monospace; }
+.float-label.active,.float-input.has-value ~ .float-label,.float-input:focus ~ .float-label
+  { top:8px;transform:none;font-size:10px;color:#F59E0B; }
+/* ── Tabs ─────────────────────────────────────────── */
+.tab { font-family:'Space Mono',monospace;font-size:11px;transition:color 0.15s; }
+.tab.active { color:#F59E0B; }
+/* ── Budget bar ──────────────────────────────────── */
+.budget-bar { height:8px;border-radius:4px;overflow:hidden;background:rgba(255,255,255,0.08); }
+.budget-fill { height:100%;border-radius:4px;transition:width 0.4s; }
+/* ── Toast ───────────────────────────────────────── */
+#toast { position:fixed;bottom:calc(5.5rem + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%) translateY(12px);
+  background:#1e293b;color:#f1f5f9;padding:10px 18px;border-radius:10px;font-size:12px;font-family:'Space Mono',monospace;
+  white-space:nowrap;pointer-events:none;opacity:0;transition:opacity 0.2s,transform 0.2s;z-index:9999; }
+#toast.show { opacity:1;transform:translateX(-50%) translateY(0); }
 </style>
 </head>
-<body class="min-h-screen flex flex-col items-center justify-start px-5 pt-16 pb-12">
+<body class="bg-gray-950 text-gray-100 min-h-screen flex flex-col" style="overscroll-behavior:none;">
 
-  <!-- Header -->
-  <div class="w-full max-w-sm">
+<!-- Toast -->
+<div id="toast"></div>
 
-    <!-- Suite link -->
-    <a href="https://loca.n8.wtf" class="inline-flex items-center gap-2 text-xs text-slate-500 hover:text-slate-300 transition-colors mb-10" style="text-decoration:none">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-      LocaLedger Suite
-    </a>
-
-    <!-- App icon + name -->
-    <div class="flex items-center gap-4 mb-4">
-      <div class="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0" style="background:var(--brand-dim);border:1px solid var(--brand-border)">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="1.8">
-          <path d="M18 20V10M12 20V4M6 20v-6"/>
-        </svg>
-      </div>
-      <div>
-        <div class="text-2xl font-bold" style="color:var(--brand-text)">LocaLimit</div>
-        <div class="text-xs text-slate-400 mt-0.5">Budget Intelligence</div>
+<!-- Header -->
+<header class="sticky top-0 z-40 flex items-center justify-between px-4 py-2"
+  style="background:rgba(15,23,42,0.95);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,0.06);padding-top:max(0.5rem,env(safe-area-inset-top))">
+  <div class="flex items-center gap-2 cursor-pointer" onclick="toggleSuiteLauncher()">
+    <div class="suite-drum-wrap" style="width:48px">
+      <div id="suiteDrum" class="suite-drum">
+        <span class="suite-face">💰</span>
+        <span class="suite-face">📉</span>
+        <span class="suite-face">📊</span>
+        <span class="suite-face">💸</span>
+        <span class="suite-face">📈</span>
+        <span class="suite-face">💧</span>
+        <span class="suite-face">📊</span>
       </div>
     </div>
-
-    <!-- Coming soon badge -->
-    <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold tracking-widest uppercase mb-6 pulse" style="background:var(--brand-dim);color:var(--brand-text);border:1px solid var(--brand-border)">
-      <span>●</span> In Development
+    <div>
+      <div style="font-size:15px;font-weight:700;color:#F59E0B;font-family:'Space Mono',monospace;line-height:1.1">LocaLimit</div>
+      <div style="font-size:9px;color:#64748b;font-family:'Space Mono',monospace">BUDGET INTELLIGENCE</div>
     </div>
-
-    <!-- Tagline -->
-    <p class="text-sm text-slate-300 leading-relaxed mb-8">
-      Compare income to spending, model budgets, project cash flow, and estimate your self-employment taxes — all offline, all private.
-    </p>
-
-    <!-- Divider -->
-    <div class="h-px mb-6" style="background:rgba(255,255,255,0.07)"></div>
-
-    <!-- Planned features -->
-    <div class="text-xxs font-bold tracking-widest uppercase text-slate-500 mb-3" style="font-size:10px">Planned Features</div>
-    <div class="mb-8">
-      <div class="feature-item">Income vs. spending side-by-side dashboard</div>
-      <div class="feature-item">Budget envelope system by category</div>
-      <div class="feature-item">Self-employment tax estimator with quarterly dates</div>
-      <div class="feature-item">Savings rate tracker with trend sparkline</div>
-      <div class="feature-item">"What if I earn 20% more?" scenario builder</div>
-      <div class="feature-item">Multi-period comparison charts</div>
-      <div class="feature-item">Reads from LocaLabor + LocaLoss automatically</div>
-    </div>
-
-    <!-- Data badge -->
-    <div class="p-3 rounded-xl text-xs text-slate-400 mb-8" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
-      <span class="font-bold" style="color:var(--brand-text)">Offline-first.</span> Your financial data never leaves your device. No accounts required for the free tier.
-    </div>
-
-    <!-- Footer -->
-    <div class="text-center text-xs text-slate-600">
-      Part of the
-      <a href="https://loca.n8.wtf" style="color:var(--brand-text);text-decoration:none">LocaLedger Suite</a>
-      &nbsp;·&nbsp; AGPL-3.0
-    </div>
-
   </div>
+  <button data-tab="settings" class="tab p-2 text-gray-400" aria-label="Settings">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+      <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </svg>
+  </button>
+</header>
+
+<!-- Suite Launcher Panel -->
+<div id="suiteLauncher" class="hidden sticky z-30" style="top:56px">
+  <div class="px-4 py-3 max-w-lg mx-auto">
+    <div class="grid grid-cols-3 gap-2">
+      <button class="suite-module-btn" onclick="switchSuiteModule('labor')">
+        <span class="suite-module-icon" style="background:rgba(99,102,241,0.15)"><span style="font-size:18px">💰</span></span>
+        <div><div style="font-size:11px;font-weight:700;color:#f1f5f9;font-family:'Space Mono',monospace">Labor</div><div style="font-size:9px;color:#64748b;font-family:'Space Mono',monospace">INCOME</div></div>
+      </button>
+      <button class="suite-module-btn" onclick="switchSuiteModule('loss')">
+        <span class="suite-module-icon" style="background:rgba(244,63,94,0.15)"><span style="font-size:18px">📉</span></span>
+        <div><div style="font-size:11px;font-weight:700;color:#f1f5f9;font-family:'Space Mono',monospace">Loss</div><div style="font-size:9px;color:#64748b;font-family:'Space Mono',monospace">SPENDING</div></div>
+      </button>
+      <button class="suite-module-btn active" onclick="switchSuiteModule('limit')">
+        <span class="suite-module-icon" style="background:rgba(245,158,11,0.15)"><span style="font-size:18px">📊</span></span>
+        <div><div style="font-size:11px;font-weight:700;color:#F59E0B;font-family:'Space Mono',monospace">Limit</div><div style="font-size:9px;color:#64748b;font-family:'Space Mono',monospace">BUDGET</div></div>
+      </button>
+      <button class="suite-module-btn" onclick="switchSuiteModule('loan')">
+        <span class="suite-module-icon" style="background:rgba(249,115,22,0.15)"><span style="font-size:18px">💸</span></span>
+        <div><div style="font-size:11px;font-weight:700;color:#f1f5f9;font-family:'Space Mono',monospace">Loan</div><div style="font-size:9px;color:#64748b;font-family:'Space Mono',monospace">DEBT</div></div>
+      </button>
+      <button class="suite-module-btn" onclick="switchSuiteModule('legacy')">
+        <span class="suite-module-icon" style="background:rgba(16,185,129,0.15)"><span style="font-size:18px">📈</span></span>
+        <div><div style="font-size:11px;font-weight:700;color:#f1f5f9;font-family:'Space Mono',monospace">Legacy</div><div style="font-size:9px;color:#64748b;font-family:'Space Mono',monospace">ASSETS</div></div>
+      </button>
+      <button class="suite-module-btn" onclick="switchSuiteModule('liquid')">
+        <span class="suite-module-icon" style="background:rgba(6,182,212,0.15)"><span style="font-size:18px">💧</span></span>
+        <div><div style="font-size:11px;font-weight:700;color:#f1f5f9;font-family:'Space Mono',monospace">Liquid</div><div style="font-size:9px;color:#64748b;font-family:'Space Mono',monospace">NET WORTH</div></div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Main content -->
+<main class="flex-1 overflow-y-auto pb-24" style="padding-bottom:calc(5.5rem + env(safe-area-inset-bottom,0px))">
+  <div id="app" class="max-w-lg mx-auto px-4 pt-4"></div>
+</main>
+
+<!-- Bottom nav -->
+<nav class="fixed bottom-0 left-0 right-0 z-40 flex"
+  style="background:rgba(15,23,42,0.97);backdrop-filter:blur(12px);border-top:1px solid rgba(255,255,255,0.06);padding-bottom:env(safe-area-inset-bottom,0px)">
+  <button data-tab="dashboard" class="tab flex-1 py-3 text-center text-gray-400">
+    <div style="font-size:18px">📊</div><div style="font-size:9px;margin-top:1px">Dashboard</div>
+  </button>
+  <button data-tab="budgets" class="tab flex-1 py-3 text-center text-gray-400">
+    <div style="font-size:18px">🎯</div><div style="font-size:9px;margin-top:1px">Budgets</div>
+  </button>
+  <button data-tab="tax" class="tab flex-1 py-3 text-center text-gray-400">
+    <div style="font-size:18px">🧾</div><div style="font-size:9px;margin-top:1px">Tax</div>
+  </button>
+</nav>
+
+<script>
+/* ════════════════════════════════════════════════════════
+   CONSTANTS
+════════════════════════════════════════════════════════ */
+const DATA_KEY    = 'locaLimitData';
+const META_KEY    = 'locaLimitMeta';
+const APP_VERSION = '1.0.0';
+const AMBER       = '#F59E0B';
+
+const DEFAULT_CATEGORIES = [
+  { key:'food',          label:'Food & Dining',   color:'#F43F5E', budget:400 },
+  { key:'transport',     label:'Transport',        color:'#F97316', budget:200 },
+  { key:'housing',       label:'Housing',          color:'#8B5CF6', budget:1500 },
+  { key:'entertainment', label:'Entertainment',    color:'#06B6D4', budget:100 },
+  { key:'health',        label:'Health',           color:'#10B981', budget:150 },
+  { key:'shopping',      label:'Shopping',         color:'#EAB308', budget:200 },
+  { key:'subscriptions', label:'Subscriptions',    color:'#94A3B8', budget:80 },
+  { key:'other',         label:'Other',            color:'#64748B', budget:0 },
+];
+
+const DEFAULT_TAX = {
+  selfEmploymentRate: 15.3,
+  federalRate:        22,
+  stateRate:          5,
+  filingStatus:       'single',
+};
+
+const QUARTERLY_DATES = [
+  { label:'Q1 (Jan–Mar)', due:'04-15' },
+  { label:'Q2 (Apr–May)', due:'06-16' },
+  { label:'Q3 (Jun–Aug)', due:'09-15' },
+  { label:'Q4 (Sep–Dec)', due:'01-15' },
+];
+
+/* ════════════════════════════════════════════════════════
+   STORAGE
+════════════════════════════════════════════════════════ */
+function loadData() {
+  try {
+    const d = JSON.parse(localStorage.getItem(DATA_KEY) || 'null');
+    if (d && d.version) return d;
+  } catch(_) {}
+  return { budgets: [], taxSettings: { ...DEFAULT_TAX }, version: 1 };
+}
+
+function saveData(data) {
+  data.updatedAt = Date.now();
+  localStorage.setItem(DATA_KEY, JSON.stringify(data));
+}
+
+/* Cross-app readers */
+function readLaborData() {
+  try { return JSON.parse(localStorage.getItem('income_data') || 'null'); } catch(_) { return null; }
+}
+function readLossData() {
+  try { return JSON.parse(localStorage.getItem('locaLossData') || 'null'); } catch(_) { return null; }
+}
+
+/* ════════════════════════════════════════════════════════
+   HELPERS
+════════════════════════════════════════════════════════ */
+function $(id) { return document.getElementById(id); }
+function todayISO() { return new Date().toISOString().split('T')[0]; }
+function fmtMoney(n) { return n == null ? '$—' : '$' + Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtPct(n) { return (n == null ? '—' : n.toFixed(1)) + '%'; }
+
+let _toastTimer = null;
+function showToast(msg, dur) {
+  const t = $('toast'); if (!t) return;
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => t.classList.remove('show'), dur || 2200);
+}
+
+function currentMonthISO() {
+  const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+
+/* Compute current month income from LocaLabor */
+function getMonthlyIncome(laborData, month) {
+  if (!laborData) return null;
+  month = month || currentMonthISO();
+  const entries = (laborData.entries || []).filter(e => !e.deleted && e.date && e.date.startsWith(month));
+  return entries.reduce((s,e) => s + (parseFloat(e.amount) || 0), 0);
+}
+
+/* Compute current month spending from LocaLoss */
+function getMonthlySpending(lossData, month) {
+  if (!lossData) return null;
+  month = month || currentMonthISO();
+  const expenses = (lossData.expenses || []).filter(e => !e.deleted && e.date && e.date.startsWith(month));
+  return expenses.reduce((s,e) => s + (parseFloat(e.amount) || 0), 0);
+}
+
+/* Spending this month by category */
+function getSpendingByCategory(lossData, month) {
+  if (!lossData) return {};
+  month = month || currentMonthISO();
+  const map = {};
+  (lossData.expenses || []).filter(e => !e.deleted && e.date && e.date.startsWith(month))
+    .forEach(e => { map[e.category || 'other'] = (map[e.category || 'other'] || 0) + (parseFloat(e.amount) || 0); });
+  return map;
+}
+
+/* YTD income from LocaLabor */
+function getYTDIncome(laborData) {
+  if (!laborData) return 0;
+  const year = new Date().getFullYear().toString();
+  return (laborData.entries || []).filter(e => !e.deleted && e.date && e.date.startsWith(year))
+    .reduce((s,e) => s + (parseFloat(e.amount) || 0), 0);
+}
+
+/* ════════════════════════════════════════════════════════
+   SUITE DRUM
+════════════════════════════════════════════════════════ */
+const DRUM_FACES   = ['💰','📉','📊','💸','📈','💧'];
+const DRUM_FACE_H  = 44;
+const FACES_TOTAL  = 7; // 6 + 1 clone for wrap
+let _drumStep = 2, _drumIdx = 2, _drumSpinning = false;
+let _launcherOpen = false;
+
+function initSuiteDrum() {
+  const drum = $('suiteDrum'); if (!drum) return;
+  drum.style.transform = `translateY(-${_drumStep * DRUM_FACE_H}px)`;
+}
+
+function spinDrum(targetIdx) {
+  if (_drumSpinning) return;
+  _drumSpinning = true;
+  const drum = $('suiteDrum'); if (!drum) return;
+  let steps = targetIdx - _drumIdx;
+  if (steps <= 0) steps += DRUM_FACES.length;
+  _drumStep = (_drumStep + steps) % FACES_TOTAL;
+  _drumIdx  = targetIdx % DRUM_FACES.length;
+  drum.style.transform = `translateY(-${_drumStep * DRUM_FACE_H}px)`;
+  setTimeout(() => { _drumSpinning = false; }, 560);
+}
+
+function toggleSuiteLauncher() {
+  const panel = $('suiteLauncher');
+  _launcherOpen = !_launcherOpen;
+  panel.classList.toggle('hidden', !_launcherOpen);
+}
+
+function switchSuiteModule(mod) {
+  _launcherOpen = false;
+  $('suiteLauncher').classList.add('hidden');
+  const APP_URLS = {
+    labor:  '/Labor/',
+    loss:   '/Loss/',
+    loan:   '/Loan/',
+    legacy: '/Legacy/',
+    liquid: '/Liquid/',
+  };
+  if (mod === 'limit') { switchTab('dashboard'); return; }
+  if (APP_URLS[mod]) window.location.href = APP_URLS[mod];
+}
+
+/* ════════════════════════════════════════════════════════
+   TABS
+════════════════════════════════════════════════════════ */
+let _activeTab = 'dashboard';
+
+function switchTab(tab) {
+  _activeTab = tab;
+  document.querySelectorAll('.tab[data-tab]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tab);
+    const icon = btn.querySelector('div:first-child');
+    if (icon) icon.style.filter = btn.dataset.tab === tab ? 'none' : '';
+  });
+  const app = $('app'); if (!app) return;
+  app.innerHTML = '';
+  if (tab === 'dashboard') renderDashboard();
+  else if (tab === 'budgets') renderBudgets();
+  else if (tab === 'tax') renderTax();
+  else if (tab === 'settings') renderSettings();
+}
+
+/* ════════════════════════════════════════════════════════
+   DASHBOARD
+════════════════════════════════════════════════════════ */
+function renderDashboard() {
+  const app = $('app'); if (!app) return;
+  const labor    = readLaborData();
+  const loss     = readLossData();
+  const limitData = loadData();
+  const month    = currentMonthISO();
+
+  const income   = getMonthlyIncome(labor, month);
+  const spending = getMonthlySpending(loss, month);
+  const net      = (income != null && spending != null) ? income - spending : null;
+  const savingsRate = (income && income > 0 && net != null) ? (net / income * 100) : null;
+
+  const spendByCategory = getSpendingByCategory(loss, month);
+
+  // Categories from LocaLoss or defaults
+  const categories = (loss?.categories?.length > 0 ? loss.categories : DEFAULT_CATEGORIES)
+    .filter(c => c.budget > 0);
+
+  // Over-budget alerts
+  const alerts = categories.filter(c => {
+    const spent = spendByCategory[c.key] || 0;
+    return c.budget > 0 && spent >= c.budget * 0.8;
+  });
+
+  const noLaborData = income == null;
+  const noLossData  = spending == null;
+
+  app.innerHTML = `
+    <div class="text-xs text-gray-500 uppercase tracking-widest mb-4" style="font-family:'Space Mono',monospace;letter-spacing:0.1em">
+      ${new Date().toLocaleString('default',{month:'long',year:'numeric'})}
+    </div>
+
+    ${alerts.length > 0 ? `
+    <div class="rounded-xl p-3 mb-4" style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3)">
+      <div class="text-xs font-bold mb-2" style="color:#F59E0B;font-family:'Space Mono',monospace">⚠ Budget Alert</div>
+      ${alerts.map(c => {
+        const spent = spendByCategory[c.key] || 0;
+        const pct   = c.budget > 0 ? spent / c.budget * 100 : 0;
+        const over  = spent >= c.budget;
+        return `<div class="text-xs text-gray-300 flex justify-between py-0.5">
+          <span>${c.label}</span>
+          <span style="color:${over ? '#F43F5E' : '#F59E0B'}">${over ? 'OVER' : Math.round(pct)+'%'} · ${fmtMoney(spent)} / ${fmtMoney(c.budget)}</span>
+        </div>`;
+      }).join('')}
+    </div>` : ''}
+
+    <!-- 3-stat row -->
+    <div class="grid grid-cols-3 gap-3 mb-4">
+      <div class="rounded-xl p-3" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
+        <div class="text-xxs text-gray-500 mb-1" style="font-family:'Space Mono',monospace">INCOME</div>
+        <div class="text-sm font-bold" style="color:#10B981;font-family:'Space Mono',monospace">${income != null ? fmtMoney(income) : '—'}</div>
+        ${noLaborData ? `<div class="text-xxs text-gray-600 mt-1">No Labor data</div>` : ''}
+      </div>
+      <div class="rounded-xl p-3" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
+        <div class="text-xxs text-gray-500 mb-1" style="font-family:'Space Mono',monospace">SPENT</div>
+        <div class="text-sm font-bold" style="color:#F43F5E;font-family:'Space Mono',monospace">${spending != null ? fmtMoney(spending) : '—'}</div>
+        ${noLossData ? `<div class="text-xxs text-gray-600 mt-1">No Loss data</div>` : ''}
+      </div>
+      <div class="rounded-xl p-3" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
+        <div class="text-xxs text-gray-500 mb-1" style="font-family:'Space Mono',monospace">NET</div>
+        <div class="text-sm font-bold" style="color:${net != null ? (net >= 0 ? '#10B981' : '#F43F5E') : '#64748b'};font-family:'Space Mono',monospace">
+          ${net != null ? (net < 0 ? '-' : '') + fmtMoney(Math.abs(net)) : '—'}
+        </div>
+      </div>
+    </div>
+
+    <!-- Savings rate card -->
+    <div class="rounded-xl p-4 mb-4" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
+      <div class="flex items-center justify-between mb-2">
+        <div class="text-xs text-gray-400" style="font-family:'Space Mono',monospace">Savings Rate</div>
+        <div class="text-lg font-bold" style="color:${savingsRate == null ? '#64748b' : savingsRate >= 20 ? '#10B981' : savingsRate >= 10 ? '#F59E0B' : '#F43F5E'};font-family:'Space Mono',monospace">
+          ${savingsRate != null ? fmtPct(savingsRate) : '—'}
+        </div>
+      </div>
+      <div class="budget-bar">
+        <div class="budget-fill" style="width:${Math.min(savingsRate || 0, 100)}%;background:${savingsRate == null ? '#374151' : savingsRate >= 20 ? '#10B981' : savingsRate >= 10 ? '#F59E0B' : '#F43F5E'}"></div>
+      </div>
+      <div class="text-xxs text-gray-600 mt-1">Target: 20%+ · ${savingsRate != null && savingsRate >= 20 ? '✓ On track' : 'Below target'}</div>
+    </div>
+
+    <!-- Budget overview -->
+    <div class="rounded-xl p-4 mb-4" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
+      <div class="flex items-center justify-between mb-3">
+        <div class="text-xs font-bold text-gray-300" style="font-family:'Space Mono',monospace">Budget Envelopes</div>
+        <button onclick="switchTab('budgets')" class="text-xxs" style="color:#F59E0B;font-family:'Space Mono',monospace">Manage →</button>
+      </div>
+      ${categories.length === 0 ? `<div class="text-xs text-gray-600">No budgets set — go to Budgets tab.</div>` :
+        categories.slice(0,5).map(c => {
+          const spent = spendByCategory[c.key] || 0;
+          const pct   = c.budget > 0 ? Math.min(spent / c.budget * 100, 100) : 0;
+          const color = pct >= 100 ? '#F43F5E' : pct >= 80 ? '#F59E0B' : '#10B981';
+          return `<div class="mb-2">
+            <div class="flex justify-between text-xxs mb-1">
+              <span class="text-gray-400">${c.label}</span>
+              <span style="color:${color}">${fmtMoney(spent)} / ${fmtMoney(c.budget)}</span>
+            </div>
+            <div class="budget-bar"><div class="budget-fill" style="width:${pct}%;background:${color}"></div></div>
+          </div>`;
+        }).join('')
+      }
+    </div>
+
+    <!-- Data source links -->
+    ${(noLaborData || noLossData) ? `
+    <div class="rounded-xl p-4 mb-4" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
+      <div class="text-xs font-bold text-gray-400 mb-3" style="font-family:'Space Mono',monospace">Connect Data Sources</div>
+      ${noLaborData ? `<button onclick="switchSuiteModule('labor')" class="w-full text-left flex items-center justify-between p-2 rounded-lg mb-2" style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.2)">
+        <span class="text-xs text-gray-300">💰 LocaLabor — add income</span>
+        <span class="text-xxs" style="color:#6366F1">Open →</span>
+      </button>` : ''}
+      ${noLossData ? `<button onclick="switchSuiteModule('loss')" class="w-full text-left flex items-center justify-between p-2 rounded-lg" style="background:rgba(244,63,94,0.1);border:1px solid rgba(244,63,94,0.2)">
+        <span class="text-xs text-gray-300">📉 LocaLoss — log spending</span>
+        <span class="text-xxs" style="color:#F43F5E">Open →</span>
+      </button>` : ''}
+    </div>` : ''}
+  `;
+}
+
+/* ════════════════════════════════════════════════════════
+   BUDGETS
+════════════════════════════════════════════════════════ */
+let _editingBudgetKey = null;
+
+function renderBudgets() {
+  const app = $('app'); if (!app) return;
+  const loss  = readLossData();
+  const month = currentMonthISO();
+  const spendByCategory = getSpendingByCategory(loss, month);
+
+  // Merge LocaLoss categories with defaults; use budgets from locaLimitData
+  const limitData  = loadData();
+  const budgetMap  = {};
+  (limitData.budgets || []).forEach(b => { budgetMap[b.key] = b.limit; });
+
+  const categories = (loss?.categories?.length > 0 ? loss.categories : DEFAULT_CATEGORIES);
+
+  app.innerHTML = `
+    <div class="text-xs text-gray-500 uppercase tracking-widest mb-4" style="font-family:'Space Mono',monospace;letter-spacing:0.1em">Budget Envelopes</div>
+    <div id="budgetList"></div>
+    <div class="text-xxs text-gray-600 text-center mt-4" style="font-family:'Space Mono',monospace">
+      Categories from LocaLoss · Set limits to track your spending
+    </div>
+  `;
+
+  renderBudgetList(categories, budgetMap, spendByCategory);
+}
+
+function renderBudgetList(categories, budgetMap, spendByCategory) {
+  const list = $('budgetList'); if (!list) return;
+  list.innerHTML = categories.map(c => {
+    const limit = budgetMap[c.key] != null ? budgetMap[c.key] : (c.budget || 0);
+    const spent = spendByCategory[c.key] || 0;
+    const pct   = limit > 0 ? Math.min(spent / limit * 100, 100) : 0;
+    const color = pct >= 100 ? '#F43F5E' : pct >= 80 ? '#F59E0B' : '#10B981';
+    return `
+      <div class="rounded-xl p-3 mb-3" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center gap-2">
+            <span style="width:8px;height:8px;border-radius:50%;background:${c.color};display:inline-block;flex-shrink:0"></span>
+            <span class="text-sm text-gray-300" style="font-family:'Space Mono',monospace">${c.label}</span>
+          </div>
+          <button onclick="openBudgetEdit('${c.key}')" class="text-xxs px-2 py-1 rounded" style="color:#F59E0B;font-family:'Space Mono',monospace;background:rgba(245,158,11,0.1)">Edit</button>
+        </div>
+        <div id="budgetEdit_${c.key}" class="hidden mb-2"></div>
+        <div class="flex justify-between text-xxs mb-1">
+          <span class="text-gray-500">Spent: ${fmtMoney(spent)}</span>
+          <span style="color:${color}">${limit > 0 ? fmtMoney(limit) + ' limit' : 'No limit set'}</span>
+        </div>
+        <div class="budget-bar"><div class="budget-fill" style="width:${limit > 0 ? pct : 0}%;background:${color}"></div></div>
+        ${limit > 0 ? `<div class="text-xxs mt-1 ${pct >= 100 ? 'text-red-400' : pct >= 80 ? 'text-amber-400' : 'text-gray-600'}">
+          ${pct >= 100 ? 'Over budget by ' + fmtMoney(spent - limit) : fmtMoney(limit - spent) + ' remaining'}
+        </div>` : ''}
+      </div>`;
+  }).join('');
+}
+
+function openBudgetEdit(key) {
+  if (_editingBudgetKey === key) {
+    $(`budgetEdit_${key}`)?.classList.add('hidden');
+    _editingBudgetKey = null;
+    return;
+  }
+  if (_editingBudgetKey) $(`budgetEdit_${_editingBudgetKey}`)?.classList.add('hidden');
+  _editingBudgetKey = key;
+
+  const limitData = loadData();
+  const budgetMap = {};
+  (limitData.budgets || []).forEach(b => { budgetMap[b.key] = b.limit; });
+  const loss = readLossData();
+  const categories = (loss?.categories?.length > 0 ? loss.categories : DEFAULT_CATEGORIES);
+  const cat = categories.find(c => c.key === key);
+  const current = budgetMap[key] != null ? budgetMap[key] : (cat?.budget || 0);
+
+  const el = $(`budgetEdit_${key}`);
+  if (!el) return;
+  el.innerHTML = `
+    <div class="flex gap-2 items-center">
+      <div class="relative flex-1">
+        <span class="absolute left-2 top-1/2 -translate-y-1/2 text-xs" style="color:#F59E0B;font-family:'Space Mono',monospace">$</span>
+        <input id="budgetInput_${key}" type="number" inputmode="decimal" min="0" step="10"
+          value="${current || ''}" placeholder="0"
+          class="w-full pl-5 pr-2 py-2 rounded-lg text-sm" style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);color:#f1f5f9;font-family:'Space Mono',monospace;outline:none;" />
+      </div>
+      <span class="text-xxs text-gray-500" style="font-family:'Space Mono',monospace">/mo</span>
+      <button onclick="saveBudgetLimit('${key}')" class="px-3 py-2 rounded-lg text-xs font-bold text-white" style="background:#F59E0B;font-family:'Space Mono',monospace">Save</button>
+    </div>`;
+  el.classList.remove('hidden');
+  setTimeout(() => $(`budgetInput_${key}`)?.focus(), 50);
+}
+
+function saveBudgetLimit(key) {
+  const inp = $(`budgetInput_${key}`); if (!inp) return;
+  const limit = parseFloat(inp.value) || 0;
+  const data  = loadData();
+  data.budgets = data.budgets || [];
+  const idx = data.budgets.findIndex(b => b.key === key);
+  if (idx >= 0) data.budgets[idx].limit = limit;
+  else data.budgets.push({ key, limit });
+  saveData(data);
+  _editingBudgetKey = null;
+  showToast('Budget saved');
+  renderBudgets();
+}
+
+/* ════════════════════════════════════════════════════════
+   TAX
+════════════════════════════════════════════════════════ */
+function renderTax() {
+  const app = $('app'); if (!app) return;
+  const data    = loadData();
+  const tax     = { ...DEFAULT_TAX, ...data.taxSettings };
+  const labor   = readLaborData();
+  const ytd     = getYTDIncome(labor);
+  const quarter = _nextQuarterDue();
+
+  const seAmount     = ytd * (tax.selfEmploymentRate / 100);
+  const fedAmount    = ytd * (tax.federalRate / 100);
+  const stateAmount  = ytd * (tax.stateRate / 100);
+  const totalTax     = seAmount + fedAmount + stateAmount;
+  const qEst         = totalTax / 4;
+
+  app.innerHTML = `
+    <div class="text-xs text-gray-500 uppercase tracking-widest mb-4" style="font-family:'Space Mono',monospace;letter-spacing:0.1em">Tax Estimator</div>
+
+    <!-- Quarterly countdown -->
+    <div class="rounded-xl p-4 mb-4" style="background:${quarter.days <= 7 ? 'rgba(244,63,94,0.1)' : quarter.days <= 30 ? 'rgba(245,158,11,0.1)' : 'rgba(255,255,255,0.03)'};border:1px solid ${quarter.days <= 7 ? 'rgba(244,63,94,0.35)' : quarter.days <= 30 ? 'rgba(245,158,11,0.35)' : 'rgba(255,255,255,0.07)'}">
+      <div class="flex items-center justify-between">
+        <div>
+          <div class="text-xs text-gray-400 mb-1" style="font-family:'Space Mono',monospace">${quarter.label}</div>
+          <div class="text-xl font-bold" style="color:${quarter.days <= 7 ? '#F43F5E' : quarter.days <= 30 ? '#F59E0B' : '#f1f5f9'};font-family:'Space Mono',monospace">${quarter.days} days</div>
+          <div class="text-xxs text-gray-500">Due ${quarter.dateStr}</div>
+        </div>
+        <div class="text-right">
+          <div class="text-xxs text-gray-500 mb-1" style="font-family:'Space Mono',monospace">EST. QUARTERLY</div>
+          <div class="text-lg font-bold" style="color:#F59E0B;font-family:'Space Mono',monospace">${fmtMoney(qEst)}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- YTD breakdown -->
+    <div class="rounded-xl p-4 mb-4" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
+      <div class="text-xs font-bold text-gray-300 mb-3" style="font-family:'Space Mono',monospace">YTD Estimates</div>
+      <div class="text-xxs text-gray-500 mb-3" style="font-family:'Space Mono',monospace">Based on ${fmtMoney(ytd)} YTD income from LocaLabor</div>
+      ${[
+        { label:'Self-Employment ('+tax.selfEmploymentRate+'%)', amount: seAmount, color:'#F59E0B' },
+        { label:'Federal Est. ('+tax.federalRate+'%)',            amount: fedAmount, color:'#8B5CF6' },
+        { label:'State Est. ('+tax.stateRate+'%)',               amount: stateAmount, color:'#06B6D4' },
+      ].map(r => `
+        <div class="flex justify-between items-center py-2" style="border-bottom:1px solid rgba(255,255,255,0.05)">
+          <span class="text-xs text-gray-400">${r.label}</span>
+          <span class="text-sm font-bold" style="color:${r.color};font-family:'Space Mono',monospace">${fmtMoney(r.amount)}</span>
+        </div>`).join('')}
+      <div class="flex justify-between items-center pt-2">
+        <span class="text-xs font-bold text-gray-300">Total Estimated Tax</span>
+        <span class="text-sm font-bold" style="color:#F43F5E;font-family:'Space Mono',monospace">${fmtMoney(totalTax)}</span>
+      </div>
+    </div>
+
+    <!-- Tax settings form -->
+    <div class="rounded-xl p-4 mb-4" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
+      <div class="text-xs font-bold text-gray-300 mb-3" style="font-family:'Space Mono',monospace">Tax Rates</div>
+      <form onsubmit="saveTaxSettings(event)">
+        <div class="grid grid-cols-2 gap-3 mb-3">
+          ${[
+            { id:'seRate',  label:'SE Rate (%)',      val: tax.selfEmploymentRate },
+            { id:'fedRate', label:'Federal Est. (%)', val: tax.federalRate },
+            { id:'stRate',  label:'State Rate (%)',   val: tax.stateRate },
+          ].map(f => `
+            <div class="float-wrap">
+              <input id="${f.id}" type="number" inputmode="decimal" step="0.1" min="0" max="100"
+                class="float-input has-value" value="${f.val}" />
+              <label class="float-label active">${f.label}</label>
+            </div>`).join('')}
+          <div class="float-wrap">
+            <select id="filingStatus" class="float-input has-value" style="padding-top:20px">
+              <option value="single" ${tax.filingStatus==='single'?'selected':''}>Single</option>
+              <option value="mfj"    ${tax.filingStatus==='mfj'?'selected':''}>Married Filing Jointly</option>
+              <option value="mfs"    ${tax.filingStatus==='mfs'?'selected':''}>Married Filing Separately</option>
+              <option value="hoh"    ${tax.filingStatus==='hoh'?'selected':''}>Head of Household</option>
+            </select>
+            <label class="float-label active">Filing Status</label>
+          </div>
+        </div>
+        <button type="submit" class="w-full py-2.5 rounded-xl text-sm font-bold text-white"
+          style="background:#F59E0B;font-family:'Space Mono',monospace">Save Tax Settings</button>
+      </form>
+    </div>
+  `;
+}
+
+function _nextQuarterDue() {
+  const now   = new Date();
+  const year  = now.getFullYear();
+  for (const q of QUARTERLY_DATES) {
+    const [mon, day] = q.due.split('-').map(Number);
+    const dueYear = (mon === 1) ? year + 1 : year;
+    const due = new Date(dueYear, mon - 1, day);
+    const diff = Math.ceil((due - now) / 86400000);
+    if (diff >= 0) return { label: q.label + ' due', days: diff, dateStr: due.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) };
+  }
+  return { label:'Q1 next year', days: 365, dateStr: '' };
+}
+
+function saveTaxSettings(e) {
+  e.preventDefault();
+  const data = loadData();
+  data.taxSettings = {
+    selfEmploymentRate: parseFloat($('seRate')?.value) || 15.3,
+    federalRate:        parseFloat($('fedRate')?.value) || 22,
+    stateRate:          parseFloat($('stRate')?.value)  || 5,
+    filingStatus:       $('filingStatus')?.value || 'single',
+  };
+  saveData(data);
+  showToast('Tax settings saved');
+  renderTax();
+}
+
+/* ════════════════════════════════════════════════════════
+   SETTINGS
+════════════════════════════════════════════════════════ */
+function renderSettings() {
+  const app = $('app'); if (!app) return;
+  app.innerHTML = `
+    <div class="text-xs text-gray-500 uppercase tracking-widest mb-4" style="font-family:'Space Mono',monospace;letter-spacing:0.1em">Settings</div>
+
+    <div class="rounded-xl p-4 mb-4" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
+      <div class="text-xs font-bold text-gray-300 mb-3" style="font-family:'Space Mono',monospace">Data</div>
+      <button onclick="exportData()" class="w-full py-3 rounded-xl text-sm font-bold mb-2 text-white" style="background:rgba(245,158,11,0.2);border:1px solid rgba(245,158,11,0.4);font-family:'Space Mono',monospace;color:#F59E0B">Export Budget Settings</button>
+      <label class="w-full py-3 rounded-xl text-sm font-bold flex items-center justify-center cursor-pointer" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);font-family:'Space Mono',monospace;color:#94a3b8">
+        Import Settings
+        <input type="file" accept=".json" class="hidden" onchange="importData(event)" />
+      </label>
+    </div>
+
+    <div class="rounded-xl p-4 mb-4" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
+      <div class="text-xs font-bold text-gray-300 mb-3" style="font-family:'Space Mono',monospace">Suite Apps</div>
+      ${[['labor','💰','LocaLabor','INCOME','rgba(99,102,241,0.15)','#6366F1'],
+         ['loss','📉','LocaLoss','SPENDING','rgba(244,63,94,0.15)','#F43F5E'],
+         ['loan','💸','LocaLoan','DEBT','rgba(249,115,22,0.15)','#F97316'],
+         ['legacy','📈','LocaLegacy','ASSETS','rgba(16,185,129,0.15)','#10B981'],
+         ['liquid','💧','LocaLiquid','NET WORTH','rgba(6,182,212,0.15)','#06B6D4']].map(([mod,icon,name,sub,bg,color]) =>
+        `<button onclick="switchSuiteModule('${mod}')" class="w-full flex items-center gap-3 p-2 rounded-lg mb-1.5" style="background:${bg};border:1px solid rgba(255,255,255,0.06)">
+          <span style="font-size:18px">${icon}</span>
+          <div class="text-left flex-1"><div class="text-xs font-bold" style="color:${color};font-family:'Space Mono',monospace">${name}</div><div class="text-xxs text-gray-500">${sub}</div></div>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M4 2l4 4-4 4" stroke="#64748b" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </button>`).join('')}
+    </div>
+
+    <div class="rounded-xl p-4 mb-4" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
+      <div class="text-xs font-bold text-gray-300 mb-1" style="font-family:'Space Mono',monospace">About</div>
+      <div class="text-xxs text-gray-600">LocaLimit v${APP_VERSION} · No cloud · No accounts</div>
+    </div>
+
+    <button onclick="confirmClearData()" class="w-full py-3 rounded-xl text-sm font-bold" style="background:rgba(244,63,94,0.1);border:1px solid rgba(244,63,94,0.3);color:#F43F5E;font-family:'Space Mono',monospace">Clear All Budget Settings</button>
+  `;
+}
+
+function exportData() {
+  const json = localStorage.getItem(DATA_KEY) || '{}';
+  try {
+    const blob = new Blob([json], { type:'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = `localimit-${todayISO()}.json`; a.click();
+    URL.revokeObjectURL(url);
+  } catch(_) {
+    navigator.clipboard?.writeText(json).then(() => showToast('Copied to clipboard'));
+  }
+}
+
+function importData(event) {
+  const file = event.target.files?.[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      if (!parsed.version) throw new Error('Invalid format');
+      localStorage.setItem(DATA_KEY, JSON.stringify({ ...parsed, updatedAt: Date.now() }));
+      showToast('Settings imported');
+      renderSettings();
+    } catch(_) { showToast('Import failed — invalid file'); }
+  };
+  reader.readAsText(file);
+}
+
+function confirmClearData() {
+  const app = $('app'); if (!app) return;
+  const prev = app.innerHTML;
+  app.innerHTML = `
+    <div class="rounded-xl p-6 text-center mt-8" style="background:rgba(244,63,94,0.1);border:1px solid rgba(244,63,94,0.3)">
+      <div class="text-2xl mb-3">⚠️</div>
+      <div class="text-sm font-bold text-gray-200 mb-2" style="font-family:'Space Mono',monospace">Clear all budget settings?</div>
+      <div class="text-xs text-gray-500 mb-6">Tax rates and budget limits will be reset. LocaLabor and LocaLoss data is unaffected.</div>
+      <button onclick="clearAllData()" class="w-full py-3 rounded-xl text-sm font-bold text-white mb-2" style="background:#F43F5E;font-family:'Space Mono',monospace">Yes, Clear Everything</button>
+      <button onclick="renderSettings()" class="w-full py-3 rounded-xl text-sm font-bold text-gray-400" style="background:rgba(255,255,255,0.06);font-family:'Space Mono',monospace">Cancel</button>
+    </div>`;
+}
+
+function clearAllData() {
+  localStorage.removeItem(DATA_KEY);
+  localStorage.removeItem(META_KEY);
+  showToast('Settings cleared');
+  renderSettings();
+}
+
+/* ════════════════════════════════════════════════════════
+   SERVICE WORKER
+════════════════════════════════════════════════════════ */
+function initSW() {
+  if (!('serviceWorker' in navigator)) return;
+  navigator.serviceWorker.register('./sw.js').then(reg => {
+    reg.addEventListener('updatefound', () => {
+      const worker = reg.installing;
+      worker.addEventListener('statechange', () => {
+        if (worker.state === 'installed' && navigator.serviceWorker.controller) _showUpdateBanner(worker);
+      });
+    });
+  });
+}
+
+function _showUpdateBanner(worker) {
+  const b = document.createElement('div');
+  b.style.cssText = 'position:fixed;bottom:calc(5rem + env(safe-area-inset-bottom,0px));left:1rem;right:1rem;z-index:9998;background:#1e293b;border:1px solid rgba(245,158,11,0.4);border-radius:12px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;font-family:\'Space Mono\',monospace;font-size:12px;color:#f1f5f9;box-shadow:0 4px 20px rgba(0,0,0,0.5)';
+  b.innerHTML = `<span style="color:#94a3b8">Update available</span><button id="updBtn" style="background:#F59E0B;color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:11px;font-weight:700;font-family:'Space Mono',monospace;cursor:pointer">Update Now</button>`;
+  document.body.appendChild(b);
+  b.querySelector('#updBtn').addEventListener('click', () => {
+    worker.postMessage({ type:'SKIP_WAITING' });
+    navigator.serviceWorker.addEventListener('controllerchange', () => location.reload());
+  });
+}
+
+/* ════════════════════════════════════════════════════════
+   INIT
+════════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+  initSuiteDrum();
+  initSW();
+  document.querySelectorAll('.tab[data-tab]').forEach(btn => {
+    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+  });
+  switchTab('dashboard');
+});
+</script>
+<script src="onboarding.js" defer></script>
 </body>
 </html>
