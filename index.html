@@ -58,8 +58,9 @@
   white-space:nowrap;pointer-events:none;opacity:0;transition:opacity 0.2s,transform 0.2s;z-index:9999; }
 #toast.show { opacity:1;transform:translateX(-50%) translateY(0); }
 </style>
+<meta name="theme-color" content="#F59E0B" />
 </head>
-<body class="bg-gray-950 text-gray-100 min-h-screen flex flex-col" style="overscroll-behavior:none;">
+<body class="bg-gray-950 text-gray-100 min-h-screen flex flex-col" style="font-family:'Space Mono',monospace;touch-action:manipulation;overscroll-behavior:none;">
 
 <!-- Toast -->
 <div id="toast"></div>
@@ -172,11 +173,14 @@
   </div>
   </div><!-- /suiteLauncher -->
 
+  <div style="display:flex;align-items:center;gap:6px">
   <button data-tab="settings" class="tab p-2 text-gray-400" aria-label="Settings">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
       <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
     </svg>
   </button>
+    <div id="authBadge" style="display:none;align-items:center"></div>
+  </div>
 </header>
 
 <!-- Main content -->
@@ -943,5 +947,6 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 <script src="onboarding.js" defer></script>
+<script src="../shared/auth-badge.js" defer></script>
 </body>
 </html>
