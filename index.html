@@ -265,7 +265,7 @@ function saveData(data) {
 const IS_DEV_LIMIT = ['localhost','127.0.0.1'].includes(location.hostname);
 const LAUNCH_URL   = IS_DEV_LIMIT
   ? `${location.protocol}//${location.hostname}${location.port?':'+location.port:''}/Launch/`
-  : 'https://launch.n8.wtf';
+  : 'https://localedger.com';
 
 function getLocaAuth() {
   try { return JSON.parse(localStorage.getItem('locaAuth')||'null'); } catch { return null; }
@@ -934,9 +934,10 @@ function _showUpdateBanner(worker) {
    INIT
 ════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
-  // Auth gate — must be signed in; suite check handled by renderDashboard gate banner
+  // Auth + Suite gate — must be signed in with an active Suite or Bundle subscription
   const _gateAuth = getLocaAuth();
   if (!_gateAuth) { window.location.replace(LAUNCH_URL); return; }
+  if (!hasSuiteAccess()) { window.location.replace(LAUNCH_URL + '?goto=pricing&highlight=suite'); return; }
 
   initSuiteDrum();
   initSW();
@@ -946,7 +947,6 @@ document.addEventListener('DOMContentLoaded', () => {
   switchTab('dashboard');
 });
 </script>
-<script src="onboarding.js" defer></script>
 <script src="../shared/auth-badge.js" defer></script>
 </body>
 </html>
