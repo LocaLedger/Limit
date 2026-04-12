@@ -321,6 +321,23 @@ function getMonthlySpending(lossData, month) {
   return expenses.reduce((s,e) => s + (parseFloat(e.amount) || 0), 0);
 }
 
+/* Spending by month for a single category — returns array of numMonths totals, oldest first */
+function getSpendingByMonth(lossData, categoryKey, numMonths) {
+  numMonths = numMonths || 3;
+  const result = [];
+  const now = new Date();
+  for (let i = numMonths - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const iso = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    if (!lossData) { result.push(0); continue; }
+    const total = (lossData.expenses || [])
+      .filter(e => !e.deleted && e.date && e.date.startsWith(iso) && (e.category || 'other') === categoryKey)
+      .reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+    result.push(total);
+  }
+  return result;
+}
+
 /* Spending this month by category */
 function getSpendingByCategory(lossData, month) {
   if (!lossData) return {};
@@ -459,6 +476,104 @@ function switchTab(tab) {
 }
 
 /* ════════════════════════════════════════════════════════
+   HEALTH SCORE
+════════════════════════════════════════════════════════ */
+function calcHealthScore(income, spending, categories, spendByCategory) {
+  let score = 100;
+  let biggestDeduction = 0;
+  let reason = '';
+
+  function deduct(amount, msg) {
+    score -= amount;
+    if (amount > biggestDeduction) { biggestDeduction = amount; reason = msg; }
+  }
+
+  if (income == null) {
+    deduct(20, 'No income data connected');
+  } else {
+    const net = spending != null ? income - spending : null;
+    const savingsRate = (income > 0 && net != null) ? (net / income * 100) : null;
+    if (savingsRate == null || savingsRate < 10) {
+      deduct(20, savingsRate != null && savingsRate < 0 ? 'Spending exceeds income' : 'Savings rate below 10%');
+    } else if (savingsRate < 20) {
+      deduct(10, 'Savings rate 10–19%');
+    }
+  }
+
+  // Per-category deductions
+  let overBudgetCount = 0;
+  let warningCount = 0;
+  (categories || []).forEach(c => {
+    const spent = (spendByCategory || {})[c.key] || 0;
+    const limit = c.budget || 0;
+    if (limit <= 0) return;
+    const pct = spent / limit * 100;
+    if (pct >= 100) overBudgetCount++;
+    else if (pct >= 80) warningCount++;
+  });
+
+  const overDeduct = Math.min(overBudgetCount * 5, 25);
+  if (overDeduct > 0) deduct(overDeduct, overBudgetCount === 1 ? '1 category over budget' : overBudgetCount + ' categories over budget');
+
+  const warnDeduct = Math.min(warningCount * 5, 15);
+  if (warnDeduct > 0 && warnDeduct > biggestDeduction) deduct(warnDeduct, warningCount + ' categor' + (warningCount === 1 ? 'y' : 'ies') + ' near budget limit');
+  else if (warnDeduct > 0) score -= warnDeduct;
+
+  score = Math.max(0, score);
+
+  let grade, gradeColor;
+  if (score >= 90)      { grade = 'A'; gradeColor = '#10B981'; }
+  else if (score >= 75) { grade = 'B'; gradeColor = '#06B6D4'; }
+  else if (score >= 60) { grade = 'C'; gradeColor = '#F59E0B'; }
+  else if (score >= 40) { grade = 'D'; gradeColor = '#F97316'; }
+  else                  { grade = 'F'; gradeColor = '#F43F5E'; }
+
+  if (!reason) reason = 'All metrics look good';
+
+  return { score, grade, gradeColor, reason };
+}
+
+/* ════════════════════════════════════════════════════════
+   SCENARIO
+════════════════════════════════════════════════════════ */
+let _scenarioAdj = 0;
+
+function updateScenario(val) {
+  _scenarioAdj = parseInt(val);
+  const labor  = readLaborData();
+  const loss   = readLossData();
+  const month  = currentMonthISO();
+
+  const baseIncome = getMonthlyIncome(labor, month);
+  const spending   = getMonthlySpending(loss, month);
+  const adjIncome  = baseIncome != null ? baseIncome * (1 + _scenarioAdj / 100) : null;
+  const adjNet     = (adjIncome != null && spending != null) ? adjIncome - spending : null;
+  const adjRate    = (adjIncome && adjIncome > 0 && adjNet != null) ? (adjNet / adjIncome * 100) : null;
+
+  const incomeEl = document.getElementById('stat-income');
+  const netEl    = document.getElementById('stat-net');
+  const rateEl   = document.getElementById('stat-savings-rate');
+  const labelEl  = document.querySelector('[data-testid="scenario-label"]');
+
+  if (incomeEl) {
+    incomeEl.textContent = adjIncome != null ? fmtMoney(adjIncome) : '—';
+    incomeEl.closest ? (incomeEl.closest('.rounded-xl') || incomeEl.parentElement).style.boxShadow =
+      _scenarioAdj !== 0 ? '0 0 0 2px rgba(245,158,11,0.4)' : '' : null;
+  }
+  if (netEl) {
+    netEl.textContent = adjNet != null ? (adjNet < 0 ? '-' : '') + fmtMoney(Math.abs(adjNet)) : '—';
+    if (adjNet != null) netEl.style.color = adjNet >= 0 ? '#10B981' : '#F43F5E';
+  }
+  if (rateEl) {
+    rateEl.textContent = adjRate != null ? fmtPct(adjRate) : '—';
+    if (adjRate != null) rateEl.style.color = adjRate >= 20 ? '#10B981' : adjRate >= 10 ? '#F59E0B' : '#F43F5E';
+  }
+  if (labelEl) {
+    labelEl.textContent = _scenarioAdj === 0 ? 'Actual' : (_scenarioAdj > 0 ? '+' : '−') + Math.abs(_scenarioAdj) + '%';
+  }
+}
+
+/* ════════════════════════════════════════════════════════
    DASHBOARD
 ════════════════════════════════════════════════════════ */
 function renderDashboard() {
@@ -523,11 +638,23 @@ function renderDashboard() {
       }).join('')}
     </div>` : ''}
 
+    <!-- Health Score Card -->
+    ${(() => {
+      const hs = calcHealthScore(income, spending, categories, spendByCategory);
+      return `<div data-testid="health-score-card" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);padding:16px;border-radius:14px;margin-bottom:16px;display:flex;align-items:center;gap:12px">
+        <span data-testid="health-grade" style="font-size:48px;font-weight:700;color:${hs.gradeColor};font-family:'Space Mono',monospace;line-height:1;flex-shrink:0">${hs.grade}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:18px;font-weight:700;color:#f1f5f9;font-family:'Space Mono',monospace">${hs.score} / 100</div>
+          <div class="text-xxs text-gray-500" style="margin-top:3px">${hs.reason}</div>
+        </div>
+      </div>`;
+    })()}
+
     <!-- 3-stat row -->
     <div class="grid grid-cols-3 gap-3 mb-4">
-      <div class="rounded-xl p-3" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
+      <div id="income-card" class="rounded-xl p-3" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);${_scenarioAdj !== 0 ? 'box-shadow:0 0 0 2px rgba(245,158,11,0.4)' : ''}">
         <div class="text-xxs text-gray-500 mb-1" style="font-family:'Space Mono',monospace">INCOME</div>
-        <div class="text-sm font-bold" style="color:#10B981;font-family:'Space Mono',monospace">${income != null ? fmtMoney(income) : '—'}</div>
+        <div id="stat-income" class="text-sm font-bold" style="color:#10B981;font-family:'Space Mono',monospace">${income != null ? fmtMoney(income * (1 + _scenarioAdj / 100)) : '—'}</div>
         ${noLaborData ? `<div class="text-xxs text-gray-600 mt-1">No Labor data</div>` : ''}
       </div>
       <div class="rounded-xl p-3" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
@@ -537,17 +664,26 @@ function renderDashboard() {
       </div>
       <div class="rounded-xl p-3" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
         <div class="text-xxs text-gray-500 mb-1" style="font-family:'Space Mono',monospace">NET</div>
-        <div class="text-sm font-bold" style="color:${net != null ? (net >= 0 ? '#10B981' : '#F43F5E') : '#64748b'};font-family:'Space Mono',monospace">
-          ${net != null ? (net < 0 ? '-' : '') + fmtMoney(Math.abs(net)) : '—'}
+        <div id="stat-net" class="text-sm font-bold" style="color:${(() => { const adjNet = income != null && spending != null ? income * (1 + _scenarioAdj/100) - spending : null; return adjNet != null ? (adjNet >= 0 ? '#10B981' : '#F43F5E') : '#64748b'; })()};font-family:'Space Mono',monospace">
+          ${(() => { const adjNet = income != null && spending != null ? income * (1 + _scenarioAdj/100) - spending : null; return adjNet != null ? (adjNet < 0 ? '-' : '') + fmtMoney(Math.abs(adjNet)) : '—'; })()}
         </div>
       </div>
+    </div>
+
+    <!-- Scenario strip -->
+    <div class="rounded-xl px-3 py-2 mb-4 flex items-center gap-3" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
+      <span class="text-xxs text-gray-500" style="white-space:nowrap;font-family:'Space Mono',monospace">What-If Income:</span>
+      <input data-testid="scenario-slider" type="range" min="-50" max="50" step="5" value="${_scenarioAdj}"
+        oninput="updateScenario(this.value)"
+        style="flex:1;accent-color:#F59E0B;cursor:pointer" />
+      <span data-testid="scenario-label" style="font-size:11px;font-weight:700;color:#F59E0B;font-family:'Space Mono',monospace;min-width:42px;text-align:right">${_scenarioAdj === 0 ? 'Actual' : (_scenarioAdj > 0 ? '+' : '−') + Math.abs(_scenarioAdj) + '%'}</span>
     </div>
 
     <!-- Savings rate card -->
     <div class="rounded-xl p-4 mb-4" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
       <div class="flex items-center justify-between mb-2">
         <div class="text-xs text-gray-400" style="font-family:'Space Mono',monospace">Savings Rate</div>
-        <div class="text-lg font-bold" style="color:${savingsRate == null ? '#64748b' : savingsRate >= 20 ? '#10B981' : savingsRate >= 10 ? '#F59E0B' : '#F43F5E'};font-family:'Space Mono',monospace">
+        <div id="stat-savings-rate" class="text-lg font-bold" style="color:${savingsRate == null ? '#64748b' : savingsRate >= 20 ? '#10B981' : savingsRate >= 10 ? '#F59E0B' : '#F43F5E'};font-family:'Space Mono',monospace">
           ${savingsRate != null ? fmtPct(savingsRate) : '—'}
         </div>
       </div>
@@ -626,11 +762,35 @@ function renderBudgets() {
 
 function renderBudgetList(categories, budgetMap, spendByCategory) {
   const list = $('budgetList'); if (!list) return;
+  const lossData = readLossData();
+  // Determine if there are at least 2 months of loss data
+  const hasHistory = (() => {
+    if (!lossData) return false;
+    const months = new Set((lossData.expenses || []).filter(e => !e.deleted && e.date).map(e => e.date.slice(0,7)));
+    return months.size >= 2;
+  })();
   list.innerHTML = categories.map(c => {
     const limit = budgetMap[c.key] != null ? budgetMap[c.key] : (c.budget || 0);
     const spent = spendByCategory[c.key] || 0;
     const pct   = limit > 0 ? Math.min(spent / limit * 100, 100) : 0;
     const color = pct >= 100 ? '#F43F5E' : pct >= 80 ? '#F59E0B' : '#10B981';
+
+    // Trend bars
+    const trendHtml = (() => {
+      if (!hasHistory) return `<span class="text-xxs text-gray-700">— no history</span>`;
+      const months = getSpendingByMonth(lossData, c.key, 3);
+      const maxVal = Math.max(...months, 0.01);
+      const barColor = color;
+      const bars = months.map(v => {
+        const h = v === 0 ? 2 : Math.max(2, Math.round((v / maxVal) * 24));
+        const bc = v === 0 ? 'rgba(255,255,255,0.1)' : barColor;
+        return `<div style="flex:1;height:${h}px;background:${bc};border-radius:2px;align-self:flex-end"></div>`;
+      }).join('');
+      const labels = ['2mo','1mo','now'].map(l => `<div style="flex:1;text-align:center" class="text-xxs text-gray-600">${l}</div>`).join('');
+      return `<div data-testid="trend-bars-${c.key}" class="flex items-end gap-1 mt-2" style="height:24px">${bars}</div>
+        <div class="flex gap-1 mt-0.5">${labels}</div>`;
+    })();
+
     return `
       <div class="rounded-xl p-3 mb-3" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
         <div class="flex items-center justify-between mb-2">
@@ -649,6 +809,7 @@ function renderBudgetList(categories, budgetMap, spendByCategory) {
         ${limit > 0 ? `<div class="text-xxs mt-1 ${pct >= 100 ? 'text-red-400' : pct >= 80 ? 'text-amber-400' : 'text-gray-600'}">
           ${pct >= 100 ? 'Over budget by ' + fmtMoney(spent - limit) : fmtMoney(limit - spent) + ' remaining'}
         </div>` : ''}
+        ${trendHtml}
       </div>`;
   }).join('');
 }
